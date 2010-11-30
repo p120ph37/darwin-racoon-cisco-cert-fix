@@ -1,0 +1,101 @@
+COMPATIBILITY AND FEATURES
+
+I have tested this on OSX Snow Lepoard 10.6.5
+It may work in closely-related Snow Lepoard releases as well.
+
+The main issue I discovered when attempting to use the build-in OSX
+VPN client to connect to a Cisco VPN with certificate authentication
+is that it refuses to accept the server's certificate if the FQDN is
+not specified in a SubjectAltName (besides the usual place: CommonName).
+This is non-standard for Cisco VPN certificates, so it has prevented the
+use of the built-in client in those cases. (And the official Cisco VPN
+client for Mac is out of date and causes kernel panics about once a
+day on my machine)
+
+The fix for this issue was to cause the certificate authentication
+code to search the CommonName from the server's certificate before
+attempting to search the SubjectAltNames.
+
+DOWNLOADING AND INSTALLING
+
+Downlaod the "racoon" binary and place it in "/usr/sbin/racoon"
+(You probably want to make a backup copy of your original "racoon"
+binary before doing this)
+You may or may not need to reboot for this to take effect.
+It may be sufficient to do "ps aux | grep racoon" and kill any running
+/sbin/racoon process.
+
+SETTING UP YOUR VPN CONNECTION TO USE CISCO CERTIFICATES
+
+In order to use the VPN with certificates, you will need to first
+obtain a client certificate in an appropriate format.
+
+If you already have your certificate in PKCS12 format, you are good to
+go, otherwise, you will need to generate a new certificate request.
+Unfortunately, if you are migrating from a Cisco VPN client, you may
+not have the client certificate in a useful format. (the Cisco client
+only exports in its own proprietary format)
+
+To ease this process, I have included a set of scripts which use the
+OpenSSL command-line utility to generate certificate requests and
+reformat the response.
+
+Use "generate_req.sh" to generate the certificate request and
+"combine_cert.sh" to package your private key and request together for
+import into your OSX Keychain.
+
+You will also need to obtain a copy of the certificate for the
+certificate authority who issued the certificte for the server-side of
+the connection (unless of course this was issued by an already-trusted
+CA like Verisign)
+
+Next, open the Keychain Access application (found in
+Applications/Utilities) and select the System keychain. (it is
+important that you use the System keychain, not the default "login"
+keychain)
+
+Use the File->Import Items menu to import the CA certificate and your
+PKCS12 cert+key file.
+
+These should show up under the "Certificates" category.  Double-click
+on the CA certificate, expand the "Trust" entry and set "When using
+this certificate:" to "Always Trust"
+
+You can also double-click on the other certificate to verify that it
+imported correctly, but you shouldn't need to set any particular trust
+settings there.
+
+Finally, in your "Network Preferences" window, create a new VPN
+interface with a type of "Cisco IPSec".
+
+When configuring the Server Address, you should make sure to use a
+FQDN or an IP address so as to match the CommonName that the server's
+certificate will supply.
+
+Clicking on the Authentication Settings button will bring up a window
+where you can select the client certificate that you imported
+previously.  If the correct certificate is not listed, go back to
+Keychain Access and check that the certificate is in the "System"
+keychain and that it has the private key attached to it.
+
+Finally, you should be able to use the "Connect" button!
+
+SOURCE CODE AND BUILDING
+
+The full original source can be found in the ipsec package from Apple,
+avialable here:
+
+http://www.opensource.apple.com/source/ipsec/ipsec-93.10/
+
+In order to build the "racoon" binary, you will need a Xcode and a
+working build environment... which is really tricky for Darwin
+components.  Generally, the "darwinbuild" tool from macosforge.com is
+a good place to start:
+
+http://darwinbuild.macosforge.org/
+
+Unfortunately, the current version (as of 11/30/2010) of darwinbuild
+does not like working with the latest sources and Xcode version, so
+many manual hacks are necessary to get the build to work.
+
+(That's why I'm also supplying the binary here!)
