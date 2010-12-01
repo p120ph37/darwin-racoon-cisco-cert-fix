@@ -1,7 +1,7 @@
 COMPATIBILITY AND FEATURES
 
-I have tested this on OSX Snow Lepoard 10.6.5
-It may work in closely-related Snow Lepoard releases as well.
+I have tested this on OSX 10.6.5 (Snow Leopard)
+It may work in closely-related Snow Leopard releases as well.
 
 The main issue I discovered when attempting to use the build-in OSX
 VPN client to connect to a Cisco VPN with certificate authentication
@@ -23,7 +23,7 @@ Downlaod the "racoon" binary and place it in "/usr/sbin/racoon"
 binary before doing this)
 You may or may not need to reboot for this to take effect.
 It may be sufficient to do "ps aux | grep racoon" and kill any running
-/sbin/racoon process.
+/usr/sbin/racoon process.
 
 SETTING UP YOUR VPN CONNECTION TO USE CISCO CERTIFICATES
 
@@ -45,9 +45,8 @@ Use "generate_req.sh" to generate the certificate request and
 import into your OSX Keychain.
 
 You will also need to obtain a copy of the certificate for the
-certificate authority who issued the certificte for the server-side of
-the connection (unless of course this was issued by an already-trusted
-CA like Verisign)
+certificate authority who issued the certificate of your VPN server
+(unless of course this was issued by an already-trusted CA like Verisign)
 
 Next, open the Keychain Access application (found in
 Applications/Utilities) and select the System keychain. (it is
@@ -62,8 +61,8 @@ on the CA certificate, expand the "Trust" entry and set "When using
 this certificate:" to "Always Trust"
 
 You can also double-click on the other certificate to verify that it
-imported correctly, but you shouldn't need to set any particular trust
-settings there.
+imported correctly and contains the private key, but you shouldn't
+need to set any particular trust settings there.
 
 Finally, in your "Network Preferences" window, create a new VPN
 interface with a type of "Cisco IPSec".
@@ -81,6 +80,9 @@ keychain and that it has the private key attached to it.
 Finally, you should be able to use the "Connect" button!
 
 SOURCE CODE AND BUILDING
+
+The file which I modified before recompiling the project is included
+here as "oakley.c"
 
 The full original source can be found in the ipsec package from Apple,
 avialable here:
