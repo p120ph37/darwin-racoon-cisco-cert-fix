@@ -1,6 +1,7 @@
 COMPATIBILITY AND FEATURES
 
-I have tested this on OSX 10.6.5 (Snow Leopard)
+This is based on the source from the from OSX 1.6.5. (1.6.7 racoon patches not yet included)
+I have tested this on OSX Snow Leopard 10.6.5, 1.6.6, and 1.6.7.
 It may work in closely-related Snow Leopard releases as well.
 
 The main issue I discovered when attempting to use the build-in OSX
