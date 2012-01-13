@@ -3,6 +3,7 @@ COMPATIBILITY AND FEATURES
 This is based on the source from the from OSX 1.6.5. (1.6.7+ patches not yet included)
 I have tested this on OSX Snow Leopard 10.6.5, 1.6.6, 1.6.7, and 1.6.8.
 It may work in closely-related Snow Leopard releases as well.
+I have also heard reports that this works on Lion as well. (thanks, Alex!)
 
 The main issue I discovered when attempting to use the build-in OSX
 VPN client to connect to a Cisco VPN with certificate authentication
