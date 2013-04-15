@@ -1,0 +1,124 @@
+The file here named "cisco_cert_mgr_p120ph37.exe" is a patched
+copy of the "cisco_cert_mgr.exe" binary from the Cisco VPN
+Client for Windows version 5.0.00.0340.
+
+Normally, the Cisco VPN tools only export private keys in a
+proprietary obfuscated format to prevent you from using the files
+with another vendor's product.  This patched version outputs the
+private key data in a standard "DER" format which can then be
+manipulated with the OpenSSL tools.
+
+The specific use-case for which I wrote this patch was to be able
+to export a cert on Windows and import it on OSX.  The preferred
+format for doing this is a PKCS#12 file, so the instructions
+below describe the process for creating this.
+
+:: From a CMD prompt, within the Cisco VPN program folder:
+::
+:: export the user cert using the patched cert manager
+cisco_cert_mgr_p120ph37.exe -U -op export
+::    Enter Certificate #: 0
+::    Enter filename: usercert.der
+:: export the CA cert (using any version of the cert manager)
+cisco_cert_mgr_p120ph37.exe -R -op export
+::    Enter Certificate #: 0
+::    Enter filename: ca.der
+
+# On a machine with OpenSSL (unix/linux/OSX/cygwin)
+# convert the CA cert to PEM format
+openssl pkcs7 -inform DER -in ca.der -print_certs > ca.pem
+# convert the user cert to PEM format
+openssl x509 -inform DER -in usercert.der -outform PEM -subject -issuer > usercert.pem
+# convert the user private key to PEM format
+openssl rsa -inform DER -in usercert.der.key -outform PEM > usercert.pem.key
+# package all of this together as a PKCS12 file
+cat usercert.pem ca.pem | openssl pkcs12 -export -inkey usercert.pem.key > usercert.p12
+# note, you do need to specify a password when creating the .p12 file,
+#  otherwise OSX will not like it.
+
+Now the usercert.p12 file can be imported into the System keyring of
+your OSX Keychain Access app.  The CA certificate, your user
+certificate, and the private key attached to it should appear in the
+System keyring.  You will want to enable "trust" on the CA
+certificate.  After that, you can proceed to set up your OSX VPN.
+
+
+
+
+
+
+
+
+For the curious, this is the assembly code that makes up the main part
+of the patch:
+
+; (note, this code is broken into tiny fragments so it could be
+; inserted into the empty space between subroutines...)
+;
+; Just as the key file is about to be exported, jump to new code.
+0041EAA4  JMP 0041E0D7
+; Grab the pointer to the cert data off the stack.
+0041E0D7  MOV ESI,DWORD PTR SS:[ESP+20]
+0041E0DB  JMP 0041E284
+; Look into the cert data structure and skip part of the encrypted key part.
+0041E284  XOR EAX,EAX
+0041E286  MOV AL,BYTE PTR DS:[ESI+5]
+0041E289  ADD ESI,EAX
+0041E28B  JMP 0041E416
+; Look at it again and skip more of the encrypted key part.
+0041E416  MOV AH,BYTE PTR DS:[ESI+8]
+0041E419  MOV AL,BYTE PTR DS:[ESI+9]
+0041E41C  ADD ESI,EAX
+0041E41E  JMP SHORT 0041E499
+; Skip the rest of the encrypted key part.
+0041E499  ADD ESI,0A
+0041E49C  JMP SHORT 0041E515
+; Read the length of the unencrypted cert part.
+0041E515  MOV AH,BYTE PTR DS:[ESI+2]
+0041E518  MOV AL,BYTE PTR DS:[ESI+3]
+0041E51B  JMP 0041E625
+; Prep the stack for a call to the routine which writes out a file.
+0041E625  ADD EAX,4
+0041E628  PUSH DWORD PTR SS:[ESP+60]  ; filename
+0041E62C  PUSH EAX  ; data length
+0041E62D  PUSH ESI  ; data pointer
+0041E62E  JMP SHORT 0041E6A2
+; Call the file-output routine, then clean up the stack, but keep the
+;  filename pointer on the stack and in EDI.
+0041E6A2  CALL 0041E080
+0041E6A7  POP EDI
+0041E6A8  POP EDI
+0041E6A9  POP EDI
+0041E6AA  PUSH EDI
+0041E6AB  JMP 0041E771
+; Find the end (null-terminator) of the filename string and put a new
+;  terminator four bytes further.
+0041E771  XOR EAX,EAX
+0041E773  XOR ECX,ECX
+0041E775  DEC ECX
+0041E776  CLD
+0041E777  REPNE SCAS BYTE PTR ES:[EDI]
+0041E779  DEC EDI
+0041E77A  AND BYTE PTR DS:[EDI+4],AL
+0041E77D  JMP SHORT 0041E7D2
+; Add ".key" to the end of the filename string.
+; Also, grab the pointer to a data structure containing the
+;  unencrypted key from the stack.
+0041E7D2  MOV DWORD PTR DS:[EDI],79656B2E
+0041E7D8  MOV ESI,DWORD PTR SS:[ESP+18]
+0041E7DC  JMP SHORT 0041E83B
+; Just a chained short jump because there wasn't room for a long jump.
+0041E83B  JMP SHORT 0041E882
+; Follow the data structure pointer, locate the key data within it,
+;  and begin to read the key length.
+0041E882  MOV ESI,DWORD PTR DS:[ESI]
+0041E884  ADD ESI,1A
+0041E887  MOV AH,BYTE PTR DS:[ESI+2]
+0041E88A  JMP 0041EAAB
+; Finish reading the key length, push the pointer and length onto the
+;  stack, and return to your originally scheduled file-output...
+0041EAAB  MOV AL,BYTE PTR DS:[ESI+3]
+0041EAAE  ADD EAX,4
+0041EAB1  PUSH EAX
+0041EAB2  PUSH ESI
+0041EAB3  CALL 0041E080
